@@ -28,7 +28,20 @@ export function listStacks(config: AtmosConfig): string[] {
     if (!fs.existsSync(config.stacksPath)) {
         return [];
     }
-    return fs.readdirSync(config.stacksPath).filter(f => f.endsWith('.yaml'));
+    const results: string[] = [];
+    const walk = (dir: string, rel: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            const relative = path.join(rel, entry.name);
+            if (entry.isDirectory()) {
+                walk(full, relative);
+            } else if (entry.isFile() && entry.name.endsWith('.yaml')) {
+                results.push(relative);
+            }
+        }
+    };
+    walk(config.stacksPath, '');
+    return results;
 }
 
 export function resolveStackPath(config: AtmosConfig, stackRef: string): string | undefined {

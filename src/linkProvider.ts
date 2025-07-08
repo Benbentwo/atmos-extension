@@ -20,12 +20,13 @@ export class StackLinkProvider implements vscode.DocumentLinkProvider {
             if (blockStart) {
                 const rest = blockStart[2].trim();
                 if (rest) {
-                    const stackRef = rest.replace(/^['"]|['"]$/g, '');
+                    const ref = rest.split(/\s+#/)[0];
+                    const stackRef = ref.replace(/^['"]|['"]$/g, '');
                     const target = resolveStackPath(config, stackRef);
                     if (target) {
-                        const startCol = text.indexOf(rest);
+                        const startCol = text.indexOf(ref);
                         const start = new vscode.Position(line, startCol);
-                        const end = start.translate(0, rest.length);
+                        const end = start.translate(0, ref.length);
                         links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.file(target)));
                     }
                     inImportBlock = false;
@@ -42,12 +43,13 @@ export class StackLinkProvider implements vscode.DocumentLinkProvider {
                 }
                 const item = text.match(/^\s*-\s*(.+)$/);
                 if (item) {
-                    const stackRef = item[1].trim().replace(/^['"]|['"]$/g, '');
+                    const ref = item[1].trim().split(/\s+#/)[0];
+                    const stackRef = ref.replace(/^['"]|['"]$/g, '');
                     const target = resolveStackPath(config, stackRef);
                     if (target) {
-                        const startCol = text.indexOf(item[1]);
+                        const startCol = text.indexOf(ref);
                         const start = new vscode.Position(line, startCol);
-                        const end = start.translate(0, item[1].length);
+                        const end = start.translate(0, ref.length);
                         links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.file(target)));
                     }
                 }
