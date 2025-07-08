@@ -16,3 +16,7 @@ Stacks must be defined in `atmos.yaml` using the `base_path` and `stacks.base_pa
 ## Extension Settings
 
 This extension contributes the `cloudposse-atmos.showStackInfo` command which can be used from the command palette.
+
+## Documentation
+
+See the [docs](docs/) directory for development and usage instructions.
