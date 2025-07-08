@@ -1,6 +1,7 @@
 {
   "name": "cloudposse-atmos",
-  "displayName": "cloudposse-atmos",
+  "icon": "assets/icons/atmos-color.png",
+  "displayName": "Atmos",
   "description": "Syntax Highlighting, Language Server, and Atmos assistant.",
   "version": "0.0.1",
   "engines": {
