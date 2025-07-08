@@ -18,8 +18,9 @@ export function loadAtmosConfig(workspaceFolder: vscode.WorkspaceFolder | undefi
     }
     const content = fs.readFileSync(configPath, 'utf8');
     const data = parse(content) as any;
-    const basePath = data?.['base_path'] || workspaceFolder.uri.fsPath;
-    const stacksPath = path.resolve(workspaceFolder.uri.fsPath, data?.['stacks']?.['base_path'] || 'stacks');
+    const basePath = path.resolve(workspaceFolder.uri.fsPath, data?.['base_path'] || '.');
+    const stacksBase = data?.['stacks']?.['base_path'] || 'stacks';
+    const stacksPath = path.resolve(basePath, stacksBase);
     return { basePath, stacksPath };
 }
 

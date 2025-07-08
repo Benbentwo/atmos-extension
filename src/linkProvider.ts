@@ -12,17 +12,44 @@ export class StackLinkProvider implements vscode.DocumentLinkProvider {
             return [];
         }
         const links: vscode.DocumentLink[] = [];
+        let inImportBlock = false;
+        let importIndent = 0;
         for (let line = 0; line < document.lineCount; line++) {
             const text = document.lineAt(line).text;
-            const match = text.match(/\bimport:\s*(.*)/);
-            if (match && match[1]) {
-                const stackRef = match[1].trim().replace(/^['"]|['"]$/g, '');
-                const target = resolveStackPath(config, stackRef);
-                if (target) {
-                    const start = new vscode.Position(line, text.indexOf(match[1]));
-                    const end = start.translate(0, match[1].length);
-                    const uri = vscode.Uri.file(target);
-                    links.push(new vscode.DocumentLink(new vscode.Range(start, end), uri));
+            const blockStart = text.match(/^(\s*)import:\s*(.*)$/);
+            if (blockStart) {
+                const rest = blockStart[2].trim();
+                if (rest) {
+                    const stackRef = rest.replace(/^['"]|['"]$/g, '');
+                    const target = resolveStackPath(config, stackRef);
+                    if (target) {
+                        const startCol = text.indexOf(rest);
+                        const start = new vscode.Position(line, startCol);
+                        const end = start.translate(0, rest.length);
+                        links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.file(target)));
+                    }
+                    inImportBlock = false;
+                } else {
+                    inImportBlock = true;
+                    importIndent = blockStart[1].length;
+                }
+                continue;
+            }
+            if (inImportBlock) {
+                const indent = text.search(/\S/);
+                if (indent <= importIndent || indent === -1) {
+                    inImportBlock = false;
+                }
+                const item = text.match(/^\s*-\s*(.+)$/);
+                if (item) {
+                    const stackRef = item[1].trim().replace(/^['"]|['"]$/g, '');
+                    const target = resolveStackPath(config, stackRef);
+                    if (target) {
+                        const startCol = text.indexOf(item[1]);
+                        const start = new vscode.Position(line, startCol);
+                        const end = start.translate(0, item[1].length);
+                        links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.file(target)));
+                    }
                 }
             }
         }
