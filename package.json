@@ -9,15 +9,26 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:yaml"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "cloudposse-atmos.helloWorld",
-        "title": "Hello World"
+        "command": "cloudposse-atmos.showStackInfo",
+        "title": "Show Atmos Stack Info"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "atmos-stacks",
+          "name": "Atmos Stacks"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
@@ -26,6 +37,9 @@
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "yaml": "^2.3.4"
   },
   "devDependencies": {
     "@types/vscode": "^1.101.0",
