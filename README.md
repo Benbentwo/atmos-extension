@@ -1,71 +1,150 @@
-# cloudposse-atmos README
+# Atmos VS Code Extension
 
-This is the README for your extension "cloudposse-atmos". After writing up a brief description, we recommend including the following sections.
+IntelliSense, navigation, and validation for [Cloud Posse Atmos](https://atmos.tools) stacks and components.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+This extension enhances your development experience when working with Atmos infrastructure-as-code projects:
 
-For example if there is an image subfolder under your extension project workspace:
+### 🎯 Intelligent Code Completion
 
-\!\[feature X\]\(images/feature-x.png\)
+- **Component auto-completion**: Suggests available Terraform components from your `components/terraform/` directory
+- **Stack import suggestions**: Auto-complete import paths for stack files
+- **Variable completion**: Common Atmos variables like `namespace`, `tenant`, `environment`, `stage`
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### 🔍 Navigation & Go-to-Definition
+
+- **Jump to component**: Cmd/Ctrl+Click on component names to open the Terraform module
+- **Jump to imports**: Cmd/Ctrl+Click on import paths to open referenced stack files
+- **Hover information**: Hover over components and imports to see details and documentation
+
+### ✅ Real-time Validation
+
+- **YAML syntax validation**: Catch syntax errors as you type
+- **Component validation**: Warns when referencing non-existent components
+- **Import validation**: Errors when importing missing stack files
+- **Circular import detection**: Identifies circular dependencies in stack imports
+
+### 🚀 Atmos Commands
+
+- **Render Stack**: View the fully merged configuration for any stack
+- **Validate Stack**: Manually trigger validation for the current stack
+- **Open Configuration**: Quick access to your `atmos.yaml` configuration
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- **VS Code** 1.101.0 or higher (or compatible editors like Windsurf)
+- **Atmos CLI** (optional but recommended for full functionality)
+  - Install: `brew install cloudposse/tap/atmos` (macOS)
+  - Or see [Atmos installation guide](https://atmos.tools/install)
+
+## Getting Started
+
+1. **Install the extension** from the VS Code Marketplace or Windsurf extensions
+2. **Open a workspace** containing an `atmos.yaml` file
+3. The extension will automatically activate and index your project
+4. Start editing stack YAML files with IntelliSense and validation!
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- `atmos.cliPath`: Path to the Atmos CLI executable (default: `"atmos"`)
+- `atmos.validation.enabled`: Enable real-time validation of stack files (default: `true`)
+- `atmos.validation.onSave`: Validate stack files on save (default: `true`)
+
+## Usage
+
+### Auto-completion
+
+When editing stack files, start typing to get suggestions:
+
+```yaml
+components:
+  terraform:
+    vpc:
+      component: vpc/  # Auto-complete shows available components
+```
+
+### Navigation
+
+- **Cmd/Ctrl+Click** on a component name to jump to its Terraform module
+- **Cmd/Ctrl+Click** on an import path to open the imported stack
+- **Hover** over components or imports to see details
+
+### Commands
+
+Access commands via the Command Palette (Cmd/Ctrl+Shift+P):
+
+- `Atmos: Render Stack Configuration` - View merged stack config
+- `Atmos: Validate Stack` - Manually validate current stack
+- `Atmos: Open Configuration` - Open atmos.yaml
+
+## Project Structure
+
+The extension expects an Atmos project structure:
+
+```
+.
+├── atmos.yaml              # Atmos configuration
+├── stacks/                 # Stack configurations (configurable)
+│   ├── catalog/
+│   └── orgs/
+└── components/
+    └── terraform/          # Terraform components (configurable)
+        ├── vpc/
+        ├── eks/
+        └── ...
+```
+
+Paths are configurable in `atmos.yaml`:
+
+```yaml
+stacks:
+  base_path: "stacks"
+
+components:
+  terraform:
+    base_path: "components/terraform"
+```
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Syntax highlighting uses generic YAML highlighting (custom Atmos grammar coming in future release)
+- Stack rendering requires Atmos CLI to be installed and in PATH
+- Large projects (500+ stacks) may experience slower initial indexing
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.1.0 - Initial Release
 
-### 1.0.0
+**MVP Features:**
+- ✅ IntelliSense for components, imports, and variables
+- ✅ Go-to-definition for components and imports
+- ✅ Hover tooltips with component information
+- ✅ Real-time validation (YAML syntax, component references, imports)
+- ✅ Circular import detection
+- ✅ Atmos commands integration
+- ✅ Configurable via atmos.yaml
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
+Contributions are welcome! Please see the [GitHub repository](https://github.com/Benbentwo/atmos-extension) for:
 
-Fixed issue #.
+- Bug reports and feature requests
+- Pull requests
+- Documentation improvements
 
-### 1.1.0
+## Resources
 
-Added features X, Y, and Z.
+- [Atmos Documentation](https://atmos.tools)
+- [Atmos GitHub](https://github.com/cloudposse/atmos)
+- [Cloud Posse](https://cloudposse.com)
+
+## License
+
+Apache 2.0
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Enjoy building infrastructure with Atmos!** 🚀

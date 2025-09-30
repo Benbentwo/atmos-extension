@@ -1,0 +1,12 @@
+# Defaults for ACME organization
+imports:
+  - catalog/_defaults
+
+vars:
+  tenant: acme
+  namespace: acme
+  region: us-east-1
+  
+  tags:
+    Organization: "ACME Corp"
+    CostCenter: "Engineering"
