@@ -158,29 +158,56 @@ Real-time validation of Atmos configurations with actionable error messages.
 
 ---
 
-### 2.6 Stack Rendering & Preview
+### 2.6 Stack Context Indicator
+
+**Priority:** P0 (Must Have)
+
+#### Description
+Display contextual information about the current stack being edited, helping users understand which stack context they're working in.
+
+#### Requirements
+- **F-029**: Status bar indicator showing the current stack name when editing stack files
+- **F-030**: Validate that the current file represents a valid stack configuration
+- **F-031**: Display stack metadata (namespace, tenant, environment, stage) in the indicator
+- **F-032**: Click indicator to show full stack information and quick actions
+- **F-033**: Update indicator dynamically as user navigates between stack files
+
+#### Acceptance Criteria
+- Status bar shows stack name when editing valid stack files
+- Invalid or non-stack files show no indicator or "Not a stack" message
+- Clicking indicator opens quick pick with stack details and actions
+- Indicator updates within 100ms of file navigation
+
+---
+
+### 2.7 Component Preview & Rendering
 
 **Priority:** P1 (Should Have)
 
 #### Description
-Show the final, deep-merged configuration for any stack without running CLI commands.
+Show the final, deep-merged configuration for any component within a stack without running CLI commands. Preview mode displays the fully resolved configuration with all imports and inheritance applied.
 
 #### Requirements
-- **F-029**: "Render Stack" command to display fully merged configuration
-- **F-030**: Side-by-side view comparing raw vs. rendered configuration
-- **F-031**: Highlight which file/layer each value originates from
-- **F-032**: Export rendered configuration as JSON/YAML
-- **F-033**: Filter rendered output by component or section
+- **F-034**: "Preview Component" command to display fully merged configuration for a specific component
+- **F-035**: Preview mode shows complete `atmos describe component` output with all imports resolved
+- **F-036**: Side-by-side view comparing raw vs. rendered configuration
+- **F-037**: Highlight which file/layer each value originates from (source attribution)
+- **F-038**: Export rendered configuration as JSON/YAML
+- **F-039**: Filter rendered output by component or section
+- **F-040**: Preview updates automatically when source files change
+- **F-041**: Support preview for both stack files and component configurations
 
 #### Acceptance Criteria
-- Rendered output matches `atmos describe component` output
-- Source attribution shows inheritance chain for each value
+- Preview output matches `atmos describe component <component> --stack <stack>` output exactly
+- All imports are fully resolved and merged in preview
+- Source attribution shows complete inheritance chain for each value
 - Export generates valid JSON/YAML files
 - Filtering reduces noise for large configurations
+- Preview refreshes within 2 seconds of file changes
 
 ---
 
-### 2.7 Integrated Terminal Commands
+### 2.8 Integrated Terminal Commands
 
 **Priority:** P2 (Nice to Have)
 
@@ -188,12 +215,12 @@ Show the final, deep-merged configuration for any stack without running CLI comm
 Execute Atmos CLI commands directly from the editor with context awareness.
 
 #### Requirements
-- **F-034**: Command palette integration for common Atmos commands
-- **F-035**: Right-click context menu on stack files to run commands
-- **F-036**: "Plan" and "Apply" buttons in stack editor toolbar
-- **F-037**: Terminal output parsing with clickable file paths
-- **F-038**: Command history and favorites
-- **F-039**: Pre-flight checks before destructive operations
+- **F-042**: Command palette integration for common Atmos commands
+- **F-043**: Right-click context menu on stack files to run commands
+- **F-044**: "Plan" and "Apply" buttons in stack editor toolbar
+- **F-045**: Terminal output parsing with clickable file paths
+- **F-046**: Command history and favorites
+- **F-047**: Pre-flight checks before destructive operations
 
 #### Acceptance Criteria
 - Commands run in integrated terminal
@@ -203,7 +230,7 @@ Execute Atmos CLI commands directly from the editor with context awareness.
 
 ---
 
-### 2.8 Component Scaffolding
+### 2.9 Component Scaffolding
 
 **Priority:** P2 (Nice to Have)
 
@@ -211,11 +238,11 @@ Execute Atmos CLI commands directly from the editor with context awareness.
 Generate boilerplate for new components and stacks following best practices.
 
 #### Requirements
-- **F-040**: "New Component" wizard for creating Terraform components
-- **F-041**: "New Stack" wizard with template selection
-- **F-042**: Customizable templates for organizational standards
-- **F-043**: Auto-generate component schema from Terraform variables
-- **F-044**: Validate generated files against linting rules
+- **F-048**: "New Component" wizard for creating Terraform components
+- **F-049**: "New Stack" wizard with template selection
+- **F-050**: Customizable templates for organizational standards
+- **F-051**: Auto-generate component schema from Terraform variables
+- **F-052**: Validate generated files against linting rules
 
 #### Acceptance Criteria
 - Wizard creates valid component structure
@@ -225,27 +252,35 @@ Generate boilerplate for new components and stacks following best practices.
 
 ---
 
-### 2.9 Workspace Management
+### 2.10 Multi-Workspace Management
 
-**Priority:** P2 (Nice to Have)
+**Priority:** P0 (Must Have)
 
 #### Description
-Manage multiple Atmos projects and configurations within a single workspace.
+Automatically discover and manage multiple Atmos projects within a single opened folder. This supports scenarios where users have multiple repositories cloned in a parent directory, each with its own `atmos.yaml` configuration.
 
 #### Requirements
-- **F-045**: Auto-detect Atmos projects by `atmos.yaml` presence
-- **F-046**: Support for monorepo with multiple Atmos roots
-- **F-047**: Workspace-level settings for Atmos CLI path and options
-- **F-048**: Project switcher for multi-project workspaces
+- **F-053**: Recursively scan opened folder for all `atmos.yaml` files
+- **F-054**: Create isolated workspace context for each discovered `atmos.yaml`
+- **F-055**: Automatically determine active workspace based on current file location
+- **F-056**: Workspace switcher UI to manually select active workspace
+- **F-057**: Status bar indicator showing current active workspace
+- **F-058**: Independent configuration management per workspace
+- **F-059**: Workspace-scoped stack and component resolution
+- **F-060**: Support for nested workspace detection (parent/child atmos.yaml files)
 
 #### Acceptance Criteria
-- Extension activates when `atmos.yaml` is detected
-- Multiple projects are isolated and independently managed
-- Settings override hierarchy: workspace > user > default
+- All `atmos.yaml` files in opened folder are discovered automatically
+- Each workspace maintains independent stacks, components, and configuration
+- Active workspace switches automatically when navigating between files
+- Status bar shows current workspace name/path
+- User can manually switch workspaces via quick pick menu
+- No conflicts between workspaces (isolated contexts)
+- Performance: Discovery completes within 2 seconds for folders with <100 atmos.yaml files
 
 ---
 
-### 2.10 Documentation & Help
+### 2.11 Documentation & Help
 
 **Priority:** P2 (Nice to Have)
 
@@ -253,11 +288,11 @@ Manage multiple Atmos projects and configurations within a single workspace.
 Contextual documentation and learning resources within the editor.
 
 #### Requirements
-- **F-049**: Hover tooltips showing component/variable documentation
-- **F-050**: Inline documentation from Terraform module descriptions
-- **F-051**: Quick links to Atmos documentation for configuration keys
-- **F-052**: Example snippets with explanations
-- **F-053**: Onboarding walkthrough for new users
+- **F-061**: Hover tooltips showing component/variable documentation
+- **F-062**: Inline documentation from Terraform module descriptions
+- **F-063**: Quick links to Atmos documentation for configuration keys
+- **F-064**: Example snippets with explanations
+- **F-065**: Onboarding walkthrough for new users
 
 #### Acceptance Criteria
 - Hovering over component shows description
@@ -312,9 +347,10 @@ Contextual documentation and learning resources within the editor.
 
 #### Flow 1: Navigate Stack Configuration
 1. Open stack YAML file
-2. Cmd/Ctrl+Click on component name
-3. View Terraform module definition
-4. Use breadcrumbs to navigate back
+2. Status bar shows current stack context (e.g., "Stack: acme-staging-us-east-1")
+3. Cmd/Ctrl+Click on component name
+4. View Terraform module definition
+5. Use breadcrumbs to navigate back
 
 #### Flow 2: Validate Configuration
 1. Edit stack file
@@ -322,13 +358,22 @@ Contextual documentation and learning resources within the editor.
 3. Click quick fix suggestion
 4. Error resolves automatically
 
-#### Flow 3: Render Stack
-1. Right-click stack file
-2. Select "Render Stack Configuration"
-3. View merged output in side panel
-4. Export or copy rendered config
+#### Flow 3: Preview Component Configuration
+1. Open stack file with component definitions
+2. Right-click on component or use Command Palette
+3. Select "Preview Component"
+4. View fully rendered configuration with all imports resolved in side panel
+5. See source attribution showing where each value originates
+6. Export or copy rendered config
 
-#### Flow 4: Execute Terraform Plan
+#### Flow 4: Check Stack Context
+1. Open any stack file
+2. View stack indicator in status bar
+3. Click indicator to see full stack metadata
+4. Quick pick shows namespace, tenant, environment, stage
+5. Select quick action (e.g., "Preview Component", "Validate Stack")
+
+#### Flow 5: Execute Terraform Plan
 1. Open stack file
 2. Click "Plan" button in toolbar
 3. Review plan output in terminal
@@ -362,11 +407,15 @@ Contextual documentation and learning resources within the editor.
 - Basic IntelliSense (F-006 to F-008)
 - Go-to-definition (F-012, F-013)
 - Basic validation (F-022 to F-024)
+- Stack context indicator (F-029 to F-033)
+- Multi-workspace management (F-053 to F-060)
 
 **Success Criteria:**
 - Extension published to marketplace
 - 50+ active users
 - Core navigation works reliably
+- Stack indicator shows correct context
+- Multiple atmos.yaml files detected and managed correctly
 
 ### 6.2 Phase 2: Enhanced Navigation (v0.2.0) - Target: Q2 2026
 
@@ -374,12 +423,13 @@ Contextual documentation and learning resources within the editor.
 - Complete IntelliSense (F-009 to F-011)
 - Full navigation features (F-014 to F-016)
 - Stack tree view (F-017)
-- Configuration rendering (F-029 to F-033)
+- Component preview and rendering (F-034 to F-041)
 
 **Success Criteria:**
 - 200+ active users
 - Positive user feedback on navigation
 - <5% error rate in rendering
+- Preview matches CLI output exactly
 
 ### 6.3 Phase 3: Visualization & Tooling (v0.3.0) - Target: Q3 2026
 
@@ -387,7 +437,7 @@ Contextual documentation and learning resources within the editor.
 - Dependency graphs (F-018 to F-020)
 - Visual diff (F-021)
 - Advanced validation (F-025 to F-028)
-- Terminal integration (F-034 to F-039)
+- Terminal integration (F-042 to F-047)
 
 **Success Criteria:**
 - 500+ active users
@@ -397,9 +447,9 @@ Contextual documentation and learning resources within the editor.
 ### 6.4 Phase 4: Advanced Features (v1.0.0) - Target: Q4 2026
 
 **Scope:**
-- Component scaffolding (F-040 to F-044)
-- Workspace management (F-045 to F-048)
-- Documentation integration (F-049 to F-053)
+- Component scaffolding (F-048 to F-052)
+- Workspace management (F-053 to F-056)
+- Documentation integration (F-057 to F-061)
 
 **Success Criteria:**
 - 1000+ active users
@@ -495,8 +545,9 @@ Contextual documentation and learning resources within the editor.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-09-30 | Ben Smith | Initial PRD creation |
+| 1.1 | 2025-09-30 | Ben Smith | Added stack context indicator (F-029 to F-033) and component preview features (F-034 to F-041) |
 
 ---
 
-**Document Status**: Draft - Ready for Review  
-**Next Steps**: Review with stakeholders, prioritize features, begin Phase 1 development
+**Document Status**: Updated - Implementation in Progress  
+**Next Steps**: Complete Phase 1 MVP features, test stack context and preview functionality

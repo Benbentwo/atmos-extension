@@ -17,6 +17,8 @@ export interface StackConfig {
     imports?: string[];
     vars?: Record<string, any>;
     settings?: Record<string, any>;
+    backend?: Record<string, any>;
+    backend_type?: string;
     components?: {
         terraform?: Record<string, StackComponent>;
         helmfile?: Record<string, any>;

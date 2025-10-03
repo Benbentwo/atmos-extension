@@ -43,6 +43,26 @@
       {
         "command": "atmos.openAtmosConfig",
         "title": "Atmos: Open Configuration"
+      },
+      {
+        "command": "atmos.showStackContext",
+        "title": "Atmos: Show Stack Context",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "atmos.previewComponent",
+        "title": "Atmos: Preview Component",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "atmos.switchWorkspace",
+        "title": "Atmos: Switch Workspace",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "atmos.showWorkspaceInfo",
+        "title": "Atmos: Show Workspace Info",
+        "icon": "$(info)"
       }
     ],
     "configuration": {

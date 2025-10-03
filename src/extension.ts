@@ -4,9 +4,17 @@ import { AtmosCompletionProvider } from './completionProvider';
 import { AtmosDefinitionProvider } from './definitionProvider';
 import { AtmosHoverProvider } from './hoverProvider';
 import { AtmosDiagnosticsProvider } from './diagnosticsProvider';
+import { StackContextProvider } from './stackContextProvider';
+import { ComponentPreviewProvider } from './componentPreviewProvider';
+import { AtmosWorkspaceManager } from './atmosWorkspaceManager';
+import { WorkspaceSwitcher } from './workspaceSwitcher';
 
+let workspaceManager: AtmosWorkspaceManager;
+let workspaceSwitcher: WorkspaceSwitcher;
 let configManager: AtmosConfigManager;
 let diagnosticsProvider: AtmosDiagnosticsProvider;
+let stackContextProvider: StackContextProvider;
+let componentPreviewProvider: ComponentPreviewProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Activating Atmos extension...');
@@ -18,20 +26,65 @@ export async function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	// Initialize config manager
-	configManager = new AtmosConfigManager(workspaceFolder.uri.fsPath);
-	const config = await configManager.loadConfig();
+	// Initialize workspace manager and discover all atmos.yaml files
+	workspaceManager = new AtmosWorkspaceManager(workspaceFolder);
+	const workspaces = await workspaceManager.discoverWorkspaces();
 
-	if (!config) {
+	if (workspaces.length === 0) {
 		vscode.window.showInformationMessage(
-			'Atmos configuration (atmos.yaml) not found. Some features may be limited.'
+			'No Atmos configuration (atmos.yaml) found. Some features may be limited.'
 		);
-	} else {
-		console.log('Atmos configuration loaded:', config);
+		return;
 	}
+
+	console.log(`Discovered ${workspaces.length} Atmos workspace(s)`);
+
+	// Initialize workspace switcher
+	workspaceSwitcher = new WorkspaceSwitcher(workspaceManager);
+	workspaceSwitcher.activate(context);
+
+	// Watch for workspace changes
+	workspaceManager.watchWorkspaces(context);
+
+	// Get active workspace config manager
+	const activeWorkspace = workspaceManager.getActiveWorkspace();
+	if (!activeWorkspace) {
+		console.log('No active workspace');
+		return;
+	}
+
+	configManager = activeWorkspace.configManager;
 
 	// Initialize diagnostics provider
 	diagnosticsProvider = new AtmosDiagnosticsProvider(configManager);
+
+	// Initialize stack context provider
+	stackContextProvider = new StackContextProvider(configManager);
+	stackContextProvider.activate(context);
+
+	// Initialize component preview provider
+	componentPreviewProvider = new ComponentPreviewProvider(configManager);
+
+	// Listen for workspace changes and update providers
+	workspaceManager.onDidChangeActiveWorkspace((workspace) => {
+		if (workspace) {
+			console.log(`Workspace changed to: ${workspace.name}`);
+			configManager = workspace.configManager;
+			
+			// Update providers with new config manager
+			diagnosticsProvider = new AtmosDiagnosticsProvider(configManager);
+			stackContextProvider = new StackContextProvider(configManager);
+			stackContextProvider.activate(context);
+			componentPreviewProvider = new ComponentPreviewProvider(configManager);
+
+			// Re-validate all open documents
+			for (const document of vscode.workspace.textDocuments) {
+				if (document.languageId === 'yaml') {
+					diagnosticsProvider.validateDocument(document);
+				}
+			}
+		}
+	});
 
 	// Register language features for YAML files
 	const yamlSelector: vscode.DocumentSelector = { 
@@ -80,6 +133,30 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('atmos.openAtmosConfig', async () => {
 			await openAtmosConfigCommand();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.showStackContext', async () => {
+			await stackContextProvider.showStackContextQuickPick();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.previewComponent', async () => {
+			await componentPreviewProvider.previewComponent();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.switchWorkspace', async () => {
+			await workspaceSwitcher.showWorkspaceSwitcher();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.showWorkspaceInfo', async () => {
+			await workspaceSwitcher.showWorkspaceInfo();
 		})
 	);
 
@@ -181,7 +258,19 @@ async function openAtmosConfigCommand() {
 }
 
 export function deactivate() {
+	if (workspaceManager) {
+		workspaceManager.dispose();
+	}
+	if (workspaceSwitcher) {
+		workspaceSwitcher.dispose();
+	}
 	if (diagnosticsProvider) {
 		diagnosticsProvider.dispose();
+	}
+	if (stackContextProvider) {
+		stackContextProvider.dispose();
+	}
+	if (componentPreviewProvider) {
+		componentPreviewProvider.dispose();
 	}
 }
