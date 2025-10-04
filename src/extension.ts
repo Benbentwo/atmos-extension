@@ -8,6 +8,7 @@ import { StackContextProvider } from './stackContextProvider';
 import { ComponentPreviewProvider } from './componentPreviewProvider';
 import { AtmosWorkspaceManager } from './atmosWorkspaceManager';
 import { WorkspaceSwitcher } from './workspaceSwitcher';
+import { StackViewerProvider } from './stackViewerProvider';
 
 let workspaceManager: AtmosWorkspaceManager;
 let workspaceSwitcher: WorkspaceSwitcher;
@@ -15,6 +16,7 @@ let configManager: AtmosConfigManager;
 let diagnosticsProvider: AtmosDiagnosticsProvider;
 let stackContextProvider: StackContextProvider;
 let componentPreviewProvider: ComponentPreviewProvider;
+let stackViewerProvider: StackViewerProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Activating Atmos extension...');
@@ -65,6 +67,39 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize component preview provider
 	componentPreviewProvider = new ComponentPreviewProvider(configManager);
 
+	// Initialize stack viewer provider
+	stackViewerProvider = new StackViewerProvider(configManager);
+	const stackViewerTreeView = vscode.window.createTreeView('atmosStackViewer', {
+		treeDataProvider: stackViewerProvider,
+		showCollapseAll: true
+	});
+	context.subscriptions.push(stackViewerTreeView);
+
+	// Update stack viewer when active editor changes
+	context.subscriptions.push(
+		vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+			if (editor && editor.document.languageId === 'yaml') {
+				const filePath = editor.document.uri.fsPath;
+				if (configManager.isStackFile(filePath)) {
+					await stackViewerProvider.updateStackFile(filePath);
+				} else {
+					await stackViewerProvider.updateStackFile(undefined);
+				}
+			} else {
+				await stackViewerProvider.updateStackFile(undefined);
+			}
+		})
+	);
+
+	// Initialize stack viewer with current file if it's a stack file
+	const activeEditor = vscode.window.activeTextEditor;
+	if (activeEditor && activeEditor.document.languageId === 'yaml') {
+		const filePath = activeEditor.document.uri.fsPath;
+		if (configManager.isStackFile(filePath)) {
+			await stackViewerProvider.updateStackFile(filePath);
+		}
+	}
+
 	// Listen for workspace changes and update providers
 	workspaceManager.onDidChangeActiveWorkspace((workspace) => {
 		if (workspace) {
@@ -76,11 +111,21 @@ export async function activate(context: vscode.ExtensionContext) {
 			stackContextProvider = new StackContextProvider(configManager);
 			stackContextProvider.activate(context);
 			componentPreviewProvider = new ComponentPreviewProvider(configManager);
+			stackViewerProvider = new StackViewerProvider(configManager);
 
 			// Re-validate all open documents
 			for (const document of vscode.workspace.textDocuments) {
 				if (document.languageId === 'yaml') {
 					diagnosticsProvider.validateDocument(document);
+				}
+			}
+
+			// Update stack viewer with current file
+			const activeEditor = vscode.window.activeTextEditor;
+			if (activeEditor && activeEditor.document.languageId === 'yaml') {
+				const filePath = activeEditor.document.uri.fsPath;
+				if (configManager.isStackFile(filePath)) {
+					stackViewerProvider.updateStackFile(filePath);
 				}
 			}
 		}
@@ -157,6 +202,42 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('atmos.showWorkspaceInfo', async () => {
 			await workspaceSwitcher.showWorkspaceInfo();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.stackViewer.refresh', async () => {
+			const activeEditor = vscode.window.activeTextEditor;
+			if (activeEditor && activeEditor.document.languageId === 'yaml') {
+				const filePath = activeEditor.document.uri.fsPath;
+				if (configManager.isStackFile(filePath)) {
+					await stackViewerProvider.updateStackFile(filePath);
+				}
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.stackViewer.openComponent', async (filePath: string, componentName: string) => {
+			try {
+				const uri = vscode.Uri.file(filePath);
+				const document = await vscode.workspace.openTextDocument(uri);
+				await vscode.window.showTextDocument(document);
+			} catch (error) {
+				vscode.window.showErrorMessage(`Failed to open component: ${error}`);
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.stackViewer.openFile', async (filePath: string) => {
+			try {
+				const uri = vscode.Uri.file(filePath);
+				const document = await vscode.workspace.openTextDocument(uri);
+				await vscode.window.showTextDocument(document);
+			} catch (error) {
+				vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+			}
 		})
 	);
 
@@ -273,4 +354,6 @@ export function deactivate() {
 	if (componentPreviewProvider) {
 		componentPreviewProvider.dispose();
 	}
+	// Stack viewer provider doesn't need explicit disposal
+	// as it's managed by the tree view subscription
 }

@@ -39,6 +39,16 @@ This extension enhances your development experience when working with Atmos infr
 - **Side-by-side preview**: Opens in a new editor pane for easy comparison
 - **No CLI required**: Pure TypeScript implementation matches `atmos describe component` output
 
+### 📋 Stack Viewer (Activity Bar)
+
+- **Dedicated panel**: Click the Atmos icon in the activity bar to open the Stack Viewer
+- **Fully rendered view**: See all components with their complete, deep-merged configuration
+- **Expandable tree**: Browse vars, settings, backend, and metadata for each component
+- **Import visualization**: View the import chain and inheritance hierarchy
+- **Click to navigate**: Jump to component definitions or imported files
+- **Auto-updates**: Refreshes automatically when switching between stack files
+- **No CLI required**: Pure TypeScript implementation for instant feedback
+
 ### 🗂️ Multi-Workspace Support
 
 - **Automatic discovery**: Finds all `atmos.yaml` files in your opened folder
@@ -89,7 +99,7 @@ When editing stack files, start typing to get suggestions:
 components:
   terraform:
     vpc:
-      component: vpc/  # Auto-complete shows available components
+      component: vpc/ # Auto-complete shows available components
 ```
 
 ### Navigation
@@ -97,6 +107,20 @@ components:
 - **Cmd/Ctrl+Click** on a component name to jump to its Terraform module
 - **Cmd/Ctrl+Click** on an import path to open the imported stack
 - **Hover** over components or imports to see details
+
+### Stack Viewer
+
+The Stack Viewer provides a visual representation of your stack configuration:
+
+1. Open any stack file (e.g., `stacks/catalog/vpc.yaml`)
+2. Click the **Atmos icon** (📋) in the activity bar (left sidebar)
+3. The Stack Viewer panel shows:
+   - All components in the current stack
+   - Fully rendered configuration with imports resolved
+   - Expandable sections for vars, settings, backend, metadata
+   - Import chain visualization
+4. Click on any component or import to navigate to its definition
+5. Use the refresh button (🔄) to manually reload the configuration
 
 ### Stack Context & Preview
 
@@ -156,11 +180,16 @@ components:
 ### 0.1.0 - Initial Release
 
 **MVP Features:**
+
 - ✅ IntelliSense for components, imports, and variables
 - ✅ Go-to-definition for components and imports
 - ✅ Hover tooltips with component information
 - ✅ Real-time validation (YAML syntax, component references, imports)
 - ✅ Circular import detection
+- ✅ Stack Viewer in activity bar with fully rendered configuration
+- ✅ Stack context indicator in status bar
+- ✅ Component preview with deep-merge resolution
+- ✅ Multi-workspace support
 - ✅ Atmos commands integration
 - ✅ Configurable via atmos.yaml
 
@@ -171,6 +200,96 @@ Contributions are welcome! Please see the [GitHub repository](https://github.com
 - Bug reports and feature requests
 - Pull requests
 - Documentation improvements
+
+## Development
+
+### Prerequisites
+
+- **Node.js** 20.x or higher
+- **pnpm** package manager
+- **VS Code** 1.95.0 or higher
+- **Gum** (optional, for interactive scripts)
+
+  ```bash
+  # macOS or Linux
+  brew install gum
+
+  # Arch Linux (btw)
+  pacman -S gum
+
+  # Nix
+  nix-env -iA nixpkgs.gum
+
+  # Flox
+  flox install gum
+
+  # Windows (via WinGet or Scoop)
+  winget install charmbracelet.gum
+  scoop install charm-gum
+  ```
+
+### Getting Started
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/Benbentwo/atmos-extension.git
+   cd atmos-extension
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Build the extension**
+
+   ```bash
+   pnpm run compile
+   ```
+
+   For continuous compilation during development:
+
+   ```bash
+   pnpm run watch
+   ```
+
+4. **Test in VS Code**
+
+   - Open the project in VS Code
+   - Press **F5** to launch the Extension Development Host
+   - This opens a new VS Code window with the extension loaded
+   - Open an Atmos project to test the extension features
+
+5. **Run tests**
+
+   ```bash
+   pnpm test
+   ```
+
+6. **Lint the code**
+
+   ```bash
+   pnpm run lint
+   ```
+
+### Development Workflow
+
+- **Source code**: All TypeScript source files are in `src/`
+- **Compiled output**: JavaScript files are generated in `out/`
+- **Watch mode**: Use `pnpm run watch` to automatically recompile on file changes
+- **Reload extension**: In the Extension Development Host, press **Cmd/Ctrl+R** to reload after changes
+
+### Building for Distribution
+
+To package the extension as a `.vsix` file:
+
+```bash
+pnpm run package
+```
+
+This creates a `cloudposse-atmos-<version>.vsix` file that can be installed manually or published to the marketplace.
 
 ## Resources
 

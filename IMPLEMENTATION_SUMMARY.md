@@ -56,7 +56,18 @@ Successfully implemented MVP (v0.1.0) of the Atmos VS Code extension based on th
 - `Atmos: Open Configuration` - Quick access to atmos.yaml
 - **PRD Requirements:** F-029, F-034, F-035
 
-#### 8. Extension Activation & Lifecycle
+#### 8. Stack Viewer (Activity Bar) (`stackViewerProvider.ts`)
+- Activity bar icon for Atmos with dedicated panel
+- Tree view displaying fully rendered stack configuration
+- Shows all components with expandable configuration sections
+- Displays imports, vars, settings, backend, and metadata
+- Auto-updates when switching between stack files
+- Click-to-navigate to component definitions and import files
+- Refresh button to manually reload configuration
+- Loading and error states with clear messaging
+- **PRD Requirements:** F-066 to F-076
+
+#### 9. Extension Activation & Lifecycle
 - Auto-activates when `atmos.yaml` is detected in workspace
 - Validates documents on open, change, and save
 - Proper cleanup on deactivation
@@ -68,13 +79,18 @@ Successfully implemented MVP (v0.1.0) of the Atmos VS Code extension based on th
 
 ```
 src/
-├── extension.ts              # Main entry point, command registration
-├── atmosConfig.ts            # Configuration management
-├── stackParser.ts            # YAML parsing and analysis
-├── completionProvider.ts     # IntelliSense implementation
-├── definitionProvider.ts     # Go-to-definition implementation
-├── hoverProvider.ts          # Hover tooltips implementation
-└── diagnosticsProvider.ts    # Validation and diagnostics
+├── extension.ts                  # Main entry point, command registration
+├── atmosConfig.ts                # Configuration management
+├── atmosWorkspaceManager.ts      # Multi-workspace management
+├── stackParser.ts                # YAML parsing and analysis
+├── completionProvider.ts         # IntelliSense implementation
+├── definitionProvider.ts         # Go-to-definition implementation
+├── hoverProvider.ts              # Hover tooltips implementation
+├── diagnosticsProvider.ts        # Validation and diagnostics
+├── stackContextProvider.ts       # Stack context in status bar
+├── componentPreviewProvider.ts   # Component preview/rendering
+├── workspaceSwitcher.ts          # Workspace switching UI
+└── stackViewerProvider.ts        # Activity bar stack viewer
 ```
 
 ### Key Technologies
@@ -127,6 +143,13 @@ ls -la ~/.windsurf/extensions/ | grep atmos
 3. Should see: "Atmos extension activated successfully"
 
 ### 3. Test Features
+
+**Stack Viewer:**
+- Open a stack YAML file (e.g., `stacks/catalog/vpc.yaml`)
+- Click the Atmos icon in the activity bar (left sidebar)
+- Should see Stack Viewer panel with rendered configuration
+- Expand components to see their full configuration
+- Click on imports to navigate to imported files
 
 **Auto-completion:**
 - Open a stack YAML file
@@ -185,9 +208,9 @@ components:
 
 ## Known Limitations
 
-1. **Syntax highlighting:** Uses generic YAML (custom grammar planned for v0.2.0)
-2. **Stack rendering:** Requires Atmos CLI installed
-3. **Find all references:** Not yet implemented (planned for v0.2.0)
+1. **Syntax highlighting:** Uses generic YAML (custom grammar planned for future release)
+2. **Stack rendering in terminal:** Requires Atmos CLI installed (Stack Viewer works without CLI)
+3. **Find all references:** Not yet implemented (planned for future release)
 4. **Visual graphs:** Not yet implemented (planned for v0.3.0)
 
 ## PRD Coverage
@@ -200,11 +223,14 @@ components:
 - ✅ Circular import detection (F-025)
 - ✅ Hover information (F-049, F-050)
 
-### Phase 2 - Planned
-- Stack tree view (F-017)
-- Complete IntelliSense (F-009 to F-011)
-- Full navigation (F-014 to F-016)
-- Stack rendering UI (F-029 to F-033)
+### Phase 2 - ✅ In Progress
+- ✅ Stack Viewer in activity bar (F-066 to F-076)
+- ✅ Stack context indicator (F-029 to F-033)
+- ✅ Component preview (F-034 to F-041)
+- ✅ Multi-workspace management (F-053 to F-060)
+- ⏳ Complete IntelliSense (F-009 to F-011)
+- ⏳ Full navigation (F-014 to F-016)
+- ⏳ Stack tree view (F-017)
 
 ### Phase 3 - Planned
 - Dependency graphs (F-018 to F-020)
@@ -220,10 +246,10 @@ components:
 3. Fix any critical bugs
 
 ### Short-term (v0.2.0)
-1. Implement stack tree view in sidebar
+1. ✅ Implement stack viewer in activity bar
 2. Add code snippets for common patterns
-3. Improve stack rendering with UI panel
-4. Add "Find All References" for components
+3. Add "Find All References" for components
+4. Enhance stack tree view with filtering
 
 ### Medium-term (v0.3.0)
 1. Visual dependency graph
@@ -253,11 +279,16 @@ components:
 ### Source Code
 - `src/extension.ts` - Main extension entry point
 - `src/atmosConfig.ts` - Configuration management
+- `src/atmosWorkspaceManager.ts` - Multi-workspace management
 - `src/stackParser.ts` - YAML parsing
 - `src/completionProvider.ts` - Auto-completion
 - `src/definitionProvider.ts` - Navigation
 - `src/hoverProvider.ts` - Hover tooltips
 - `src/diagnosticsProvider.ts` - Validation
+- `src/stackContextProvider.ts` - Stack context status bar
+- `src/componentPreviewProvider.ts` - Component preview
+- `src/workspaceSwitcher.ts` - Workspace switcher
+- `src/stackViewerProvider.ts` - Activity bar stack viewer
 
 ### Documentation
 - `PRD.md` - Product Requirements Document

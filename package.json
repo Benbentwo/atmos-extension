@@ -4,7 +4,7 @@
   "description": "IntelliSense, navigation, and validation for Cloud Posse Atmos stacks and components",
   "version": "0.1.0",
   "publisher": "cloudposse",
-  "icon": "images/icon.png",
+  "icon": "appicon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Benbentwo/atmos-extension"
@@ -63,8 +63,48 @@
         "command": "atmos.showWorkspaceInfo",
         "title": "Atmos: Show Workspace Info",
         "icon": "$(info)"
+      },
+      {
+        "command": "atmos.stackViewer.refresh",
+        "title": "Refresh Stack Viewer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "atmos.stackViewer.openComponent",
+        "title": "Open Component"
+      },
+      {
+        "command": "atmos.stackViewer.openFile",
+        "title": "Open File"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "atmos-explorer",
+          "title": "Atmos",
+          "icon": "resources/activitybar.png"
+        }
+      ]
+    },
+    "views": {
+      "atmos-explorer": [
+        {
+          "id": "atmosStackViewer",
+          "name": "Stack Viewer",
+          "contextualTitle": "Atmos Stack Viewer"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "atmos.stackViewer.refresh",
+          "when": "view == atmosStackViewer",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Atmos",
       "properties": {

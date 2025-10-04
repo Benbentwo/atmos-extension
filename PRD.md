@@ -207,7 +207,40 @@ Show the final, deep-merged configuration for any component within a stack witho
 
 ---
 
-### 2.8 Integrated Terminal Commands
+### 2.8 Stack Viewer (Activity Bar)
+
+**Priority:** P1 (Should Have)
+
+#### Description
+Provide a dedicated activity bar view that displays the fully rendered configuration of the currently open stack file. The viewer shows all components defined in the stack with their complete, deep-merged configuration including all imports and inheritance.
+
+#### Requirements
+- **F-066**: Activity bar icon for Atmos Stack Viewer
+- **F-067**: Tree view displaying all components in the currently open stack file
+- **F-068**: Expandable tree nodes showing fully rendered configuration for each component
+- **F-069**: Display vars, settings, backend, and metadata sections for each component
+- **F-070**: Show import chain and inheritance hierarchy for the current stack
+- **F-071**: Auto-update viewer when switching between stack files
+- **F-072**: Click on component in tree to navigate to definition in file
+- **F-073**: Refresh button to manually reload rendered configuration
+- **F-074**: Show loading state while rendering stack configuration
+- **F-075**: Display error states when stack cannot be rendered
+- **F-076**: Support for both inline and webview rendering modes
+
+#### Acceptance Criteria
+- Activity bar shows Atmos icon and opens stack viewer panel
+- Tree view displays all components from current stack file
+- Expanding a component shows its fully rendered configuration
+- Configuration matches output from `atmos describe component`
+- Viewer updates within 500ms when switching files
+- Import chain is clearly visualized
+- Clicking component navigates to its definition
+- Error messages are clear and actionable
+- Performance: Renders stacks with 50+ components without lag
+
+---
+
+### 2.9 Integrated Terminal Commands
 
 **Priority:** P2 (Nice to Have)
 
@@ -230,7 +263,7 @@ Execute Atmos CLI commands directly from the editor with context awareness.
 
 ---
 
-### 2.9 Component Scaffolding
+### 2.10 Component Scaffolding
 
 **Priority:** P2 (Nice to Have)
 
@@ -252,7 +285,7 @@ Generate boilerplate for new components and stacks following best practices.
 
 ---
 
-### 2.10 Multi-Workspace Management
+### 2.11 Multi-Workspace Management
 
 **Priority:** P0 (Must Have)
 
@@ -280,7 +313,7 @@ Automatically discover and manage multiple Atmos projects within a single opened
 
 ---
 
-### 2.11 Documentation & Help
+### 2.12 Documentation & Help
 
 **Priority:** P2 (Nice to Have)
 
@@ -424,12 +457,14 @@ Contextual documentation and learning resources within the editor.
 - Full navigation features (F-014 to F-016)
 - Stack tree view (F-017)
 - Component preview and rendering (F-034 to F-041)
+- Stack Viewer in activity bar (F-066 to F-076)
 
 **Success Criteria:**
 - 200+ active users
 - Positive user feedback on navigation
 - <5% error rate in rendering
 - Preview matches CLI output exactly
+- Stack viewer provides instant visibility into component configuration
 
 ### 6.3 Phase 3: Visualization & Tooling (v0.3.0) - Target: Q3 2026
 
@@ -546,8 +581,9 @@ Contextual documentation and learning resources within the editor.
 |---------|------|--------|---------|
 | 1.0 | 2025-09-30 | Ben Smith | Initial PRD creation |
 | 1.1 | 2025-09-30 | Ben Smith | Added stack context indicator (F-029 to F-033) and component preview features (F-034 to F-041) |
+| 1.2 | 2025-10-04 | Ben Smith | Added Stack Viewer activity bar feature (F-066 to F-076) |
 
 ---
 
 **Document Status**: Updated - Implementation in Progress  
-**Next Steps**: Complete Phase 1 MVP features, test stack context and preview functionality
+**Next Steps**: Implement Stack Viewer in activity bar, complete Phase 2 features
