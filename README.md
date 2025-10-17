@@ -1,71 +1,133 @@
-# cloudposse-atmos README
+# Atmos VS Code Extension
 
-This is the README for your extension "cloudposse-atmos". After writing up a brief description, we recommend including the following sections.
+IntelliSense, navigation, and validation for [Cloud Posse Atmos](https://atmos.tools) stacks and components.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Language Support
+- **IntelliSense**: Component names, imports, variables
+- **Go-to-Definition**: Navigate to components and imports
+- **Syntax Highlighting**: Enhanced for templates and Atmos constructs
+- **Outline View**: Document structure with breadcrumbs
+- **Validation**: Real-time YAML, component, and import validation
+  - Schema validation with helpful error messages
+  - Common typo detection (e.g., `imports` → `import`)
+  - Component and import path verification
+  - Circular import detection
 
-For example if there is an image subfolder under your extension project workspace:
+### Views & Navigation
+- **Stack Context**: Status bar showing current stack calculated from `atmos.yaml` pattern
+- **Stack Viewer**: Activity bar view with rendered component configuration
+- **Components View**: Sidebar view of all components with search
+- **Component Preview**: Deep-merged config with all imports resolved
 
-\!\[feature X\]\(images/feature-x.png\)
+### Advanced Features
+- **Explorer Decorations**: Stack names displayed next to files
+- **Component Tree**: Expandable stack files showing components
+- **Custom Editor**: Optional split view with live preview
+- **Multi-Workspace**: Auto-discover multiple `atmos.yaml` files
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Quick Start
 
-## Requirements
+1. Install extension from VS Code Marketplace
+2. Open workspace containing `atmos.yaml`
+3. Extension auto-activates and indexes project
+4. Start editing stack YAML files with IntelliSense!
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## Usage
 
-## Extension Settings
+**IntelliSense**: Type to get component/import suggestions  
+**Navigation**: Cmd/Ctrl+Click on components or imports  
+**Outline**: View document structure (Cmd/Ctrl+Shift+O)  
+**Stack Context**: Check status bar for current stack  
+**Stack Viewer**: Click Atmos icon in activity bar  
+**Components View**: See all components in sidebar  
+**Custom Editor**: Right-click stack file → "Open With..." → "Atmos Stack Editor"
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Commands
 
-For example:
+- `Atmos: Preview Component` - View rendered config
+- `Atmos: Show Stack Context` - Stack details and actions
+- `Atmos: Switch Workspace` - Change active workspace
+- `Atmos: Validate Stack` - Validate current stack
 
-This extension contributes the following settings:
+## Configuration
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+```json
+{
+  "atmos.cliPath": "atmos",
+  "atmos.validation.enabled": true,
+  "atmos.explorer.showDecorations": true,
+  "atmos.components.autoRefresh": true
+}
+```
 
-## Known Issues
+See [PRD.md](PRD.md) for all settings.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Project Structure
 
-## Release Notes
+The extension expects an Atmos project structure:
 
-Users appreciate release notes as you update your extension.
+```
+.
+├── atmos.yaml              # Atmos configuration
+├── stacks/                 # Stack configurations (configurable)
+│   ├── catalog/
+│   └── orgs/
+└── components/
+    └── terraform/          # Terraform components (configurable)
+        ├── vpc/
+        ├── eks/
+        └── ...
+```
 
-### 1.0.0
+Paths and stack naming are configurable in `atmos.yaml`:
 
-Initial release of ...
+```yaml
+stacks:
+  base_path: "stacks"
+  name_pattern: "{tenant}-{environment}-{stage}"
 
-### 1.0.1
+components:
+  terraform:
+    base_path: "components/terraform"
+```
 
-Fixed issue #.
+The `name_pattern` defines how stack names are displayed in the status bar and file decorations. Variables are resolved from your stack's `vars` section.
 
-### 1.1.0
+## Documentation
 
-Added features X, Y, and Z.
+- **[PRD.md](PRD.md)** - Product requirements and features
+- **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Development guide
+- **[VALIDATION_GUIDE.md](VALIDATION_GUIDE.md)** - Schema validation reference
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Compile
+pnpm run compile
+
+# Run in development (F5 in VS Code)
+# Package for distribution
+pnpm run package
+```
+
+See [IMPLEMENTATION.md](IMPLEMENTATION.md) for detailed development guide.
+
+## Resources
+
+- [Atmos Documentation](https://atmos.tools)
+- [Atmos GitHub](https://github.com/cloudposse/atmos)
+- [Cloud Posse](https://cloudposse.com)
+
+## License
+
+Apache 2.0
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Enjoy building infrastructure with Atmos!** 🚀
