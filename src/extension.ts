@@ -9,6 +9,13 @@ import { ComponentPreviewProvider } from './componentPreviewProvider';
 import { AtmosWorkspaceManager } from './atmosWorkspaceManager';
 import { WorkspaceSwitcher } from './workspaceSwitcher';
 import { StackViewerProvider } from './stackViewerProvider';
+// Advanced Providers
+import { AtmosFileDecorationProvider } from './fileDecorationProvider';
+import { ExplorerTreeProvider } from './explorerTreeProvider';
+import { ComponentsViewProvider } from './componentsViewProvider';
+import { StackCustomEditorProvider } from './stackCustomEditor';
+import { AtmosDocumentSymbolProvider } from './documentSymbolProvider';
+import { AtmosSemanticTokensProvider } from './semanticTokensProvider';
 
 let workspaceManager: AtmosWorkspaceManager;
 let workspaceSwitcher: WorkspaceSwitcher;
@@ -17,6 +24,10 @@ let diagnosticsProvider: AtmosDiagnosticsProvider;
 let stackContextProvider: StackContextProvider;
 let componentPreviewProvider: ComponentPreviewProvider;
 let stackViewerProvider: StackViewerProvider;
+// Advanced Providers
+let fileDecorationProvider: AtmosFileDecorationProvider;
+let explorerTreeProvider: ExplorerTreeProvider;
+let componentsViewProvider: ComponentsViewProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Activating Atmos extension...');
@@ -75,28 +86,60 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(stackViewerTreeView);
 
-	// Update stack viewer when active editor changes
+	// Initialize file decoration provider
+	fileDecorationProvider = new AtmosFileDecorationProvider(configManager);
+	context.subscriptions.push(
+		vscode.window.registerFileDecorationProvider(fileDecorationProvider)
+	);
+
+	// Initialize explorer tree provider
+	explorerTreeProvider = new ExplorerTreeProvider(configManager);
+	context.subscriptions.push(explorerTreeProvider);
+
+	// Initialize components view provider
+	componentsViewProvider = new ComponentsViewProvider(configManager);
+	const componentsTreeView = vscode.window.createTreeView('atmosComponents', {
+		treeDataProvider: componentsViewProvider,
+		showCollapseAll: true
+	});
+	context.subscriptions.push(componentsTreeView);
+
+	// Initialize custom editor provider
+	const customEditorProvider = new StackCustomEditorProvider(configManager);
+	context.subscriptions.push(
+		vscode.window.registerCustomEditorProvider(
+			StackCustomEditorProvider.viewType,
+			customEditorProvider,
+			{
+				webviewOptions: {
+					retainContextWhenHidden: true
+				}
+			}
+		)
+	);
+
+	// Update components view when active editor changes
 	context.subscriptions.push(
 		vscode.window.onDidChangeActiveTextEditor(async (editor) => {
 			if (editor && editor.document.languageId === 'yaml') {
 				const filePath = editor.document.uri.fsPath;
 				if (configManager.isStackFile(filePath)) {
-					await stackViewerProvider.updateStackFile(filePath);
+					await componentsViewProvider.updateStackFile(filePath);
 				} else {
-					await stackViewerProvider.updateStackFile(undefined);
+					await componentsViewProvider.updateStackFile(undefined);
 				}
 			} else {
-				await stackViewerProvider.updateStackFile(undefined);
+				await componentsViewProvider.updateStackFile(undefined);
 			}
 		})
 	);
 
-	// Initialize stack viewer with current file if it's a stack file
+	// Initialize components view with current file if it's a stack file
 	const activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor && activeEditor.document.languageId === 'yaml') {
 		const filePath = activeEditor.document.uri.fsPath;
 		if (configManager.isStackFile(filePath)) {
-			await stackViewerProvider.updateStackFile(filePath);
+			await componentsViewProvider.updateStackFile(filePath);
 		}
 	}
 
@@ -120,14 +163,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
-			// Update stack viewer with current file
-			const activeEditor = vscode.window.activeTextEditor;
-			if (activeEditor && activeEditor.document.languageId === 'yaml') {
-				const filePath = activeEditor.document.uri.fsPath;
-				if (configManager.isStackFile(filePath)) {
-					stackViewerProvider.updateStackFile(filePath);
-				}
-			}
+			// Reload stacks in the stack viewer
+			stackViewerProvider.reloadStacks();
 		}
 	});
 
@@ -159,6 +196,23 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.languages.registerHoverProvider(
 			yamlSelector,
 			new AtmosHoverProvider(configManager)
+		)
+	);
+
+	// Register document symbol provider
+	context.subscriptions.push(
+		vscode.languages.registerDocumentSymbolProvider(
+			yamlSelector,
+			new AtmosDocumentSymbolProvider(configManager)
+		)
+	);
+
+	// Register semantic tokens provider
+	context.subscriptions.push(
+		vscode.languages.registerDocumentSemanticTokensProvider(
+			yamlSelector,
+			new AtmosSemanticTokensProvider(configManager),
+			AtmosSemanticTokensProvider.getLegend()
 		)
 	);
 
@@ -207,13 +261,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('atmos.stackViewer.refresh', async () => {
-			const activeEditor = vscode.window.activeTextEditor;
-			if (activeEditor && activeEditor.document.languageId === 'yaml') {
-				const filePath = activeEditor.document.uri.fsPath;
-				if (configManager.isStackFile(filePath)) {
-					await stackViewerProvider.updateStackFile(filePath);
-				}
-			}
+			await stackViewerProvider.reloadStacks();
 		})
 	);
 
@@ -222,7 +270,28 @@ export async function activate(context: vscode.ExtensionContext) {
 			try {
 				const uri = vscode.Uri.file(filePath);
 				const document = await vscode.workspace.openTextDocument(uri);
-				await vscode.window.showTextDocument(document);
+				const editor = await vscode.window.showTextDocument(document);
+				
+				// Find the component definition in the file
+				const text = document.getText();
+				const lines = text.split('\n');
+				
+				// Look for the component name in the components.terraform section
+				// Component names can be like "eks/dev" so we need to handle the full path
+				const componentKey = componentName.split('/').pop() || componentName;
+				
+				for (let i = 0; i < lines.length; i++) {
+					const line = lines[i];
+					// Match component definition like "  eks/dev:" or "  vpc:"
+					const match = line.match(/^\s+([a-zA-Z0-9_\-\/]+):\s*$/);
+					if (match && match[1] === componentName) {
+						// Found the component, navigate to it
+						const position = new vscode.Position(i, 0);
+						editor.selection = new vscode.Selection(position, position);
+						editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+						break;
+					}
+				}
 			} catch (error) {
 				vscode.window.showErrorMessage(`Failed to open component: ${error}`);
 			}
@@ -237,6 +306,55 @@ export async function activate(context: vscode.ExtensionContext) {
 				await vscode.window.showTextDocument(document);
 			} catch (error) {
 				vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+			}
+		})
+	);
+
+	// Register explorer commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.explorer.openComponent', async (filePath: string, componentName: string, lineNumber: number) => {
+			try {
+				const uri = vscode.Uri.file(filePath);
+				const document = await vscode.workspace.openTextDocument(uri);
+				const editor = await vscode.window.showTextDocument(document);
+				if (lineNumber !== undefined) {
+					const position = new vscode.Position(lineNumber, 0);
+					editor.selection = new vscode.Selection(position, position);
+					editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+				}
+			} catch (error) {
+				vscode.window.showErrorMessage(`Failed to open component: ${error}`);
+			}
+		})
+	);
+
+	// Register components view commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.componentsView.openComponent', async (filePath: string, componentName: string) => {
+			try {
+				const uri = vscode.Uri.file(filePath);
+				const document = await vscode.workspace.openTextDocument(uri);
+				await vscode.window.showTextDocument(document);
+			} catch (error) {
+				vscode.window.showErrorMessage(`Failed to open component: ${error}`);
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.componentsView.refresh', async () => {
+			componentsViewProvider.refresh();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('atmos.componentsView.search', async () => {
+			const filter = await vscode.window.showInputBox({
+				prompt: 'Search components',
+				placeHolder: 'Enter component name...'
+			});
+			if (filter !== undefined) {
+				componentsViewProvider.setSearchFilter(filter);
 			}
 		})
 	);

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { AtmosConfigManager } from './atmosConfig';
-import { StackParser } from './stackParser';
+import { StackParser, StackConfig } from './stackParser';
 
 export interface StackContext {
     stackName: string;
@@ -90,12 +91,12 @@ export class StackContextProvider {
             const relativePath = path.relative(stacksPath, filePath);
             const stackName = relativePath.replace(/\.ya?ml$/, '');
 
-            // Parse the stack file to extract metadata
-            const parsed = await this.stackParser.parseStackFile(filePath);
+            // Parse the stack file and merge all imports to get the full context
+            const mergedConfig = await this.mergeStackRecursive(filePath, new Set());
             
             // Extract metadata from vars or settings
-            const vars = parsed.config.vars || {};
-            const settings = parsed.config.settings || {};
+            const vars = mergedConfig.vars || {};
+            const settings = mergedConfig.settings || {};
             
             // Try to extract namespace, tenant, environment, stage
             const namespace = vars.namespace || settings.namespace;
@@ -105,10 +106,11 @@ export class StackContextProvider {
 
             // Determine if this is a valid stack
             // A valid stack should have at least some configuration
-            const isValid = parsed.errors.length === 0 && (
-                parsed.imports.length > 0 ||
-                parsed.components.size > 0 ||
-                Object.keys(vars).length > 0
+            const isValid = Boolean(
+                Object.keys(vars).length > 0 ||
+                Object.keys(settings).length > 0 ||
+                (mergedConfig.components?.terraform && Object.keys(mergedConfig.components.terraform).length > 0) ||
+                (mergedConfig.terraform && Object.keys(mergedConfig.terraform).length > 0)
             );
 
             return {
@@ -125,26 +127,102 @@ export class StackContextProvider {
         }
     }
 
+    /**
+     * Recursively merge stack imports to get the full configuration
+     */
+    private async mergeStackRecursive(stackFilePath: string, visited: Set<string>): Promise<StackConfig> {
+        // Prevent circular imports
+        if (visited.has(stackFilePath)) {
+            return {};
+        }
+        visited.add(stackFilePath);
+
+        // Check if file exists
+        if (!fs.existsSync(stackFilePath)) {
+            return {};
+        }
+
+        const parsed = await this.stackParser.parseStackFile(stackFilePath);
+        
+        if (parsed.errors.length > 0) {
+            console.warn(`Errors parsing ${stackFilePath}:`, parsed.errors);
+        }
+
+        // Start with empty config
+        let mergedConfig: StackConfig = {};
+
+        // Process imports first (bottom-up merge)
+        for (const importPath of parsed.imports) {
+            const resolvedPath = this.stackParser.resolveImportPath(
+                stackFilePath,
+                importPath
+            );
+            
+            const importedConfig = await this.mergeStackRecursive(
+                resolvedPath,
+                visited
+            );
+            
+            mergedConfig = this.mergeConfigs(mergedConfig, importedConfig);
+        }
+
+        // Merge current file's config on top
+        mergedConfig = this.mergeConfigs(mergedConfig, parsed.config);
+
+        return mergedConfig;
+    }
+
+    /**
+     * Merge two stack configurations
+     */
+    private mergeConfigs(base: StackConfig, override: StackConfig): StackConfig {
+        const merged: StackConfig = { ...base };
+
+        // Merge vars
+        if (override.vars) {
+            merged.vars = { ...(merged.vars || {}), ...override.vars };
+        }
+
+        // Merge settings
+        if (override.settings) {
+            merged.settings = { ...(merged.settings || {}), ...override.settings };
+        }
+
+        // Merge components (we don't need full component merging for context extraction)
+        if (override.components) {
+            merged.components = override.components;
+        }
+
+        // Handle legacy terraform format
+        if (override.terraform) {
+            merged.terraform = override.terraform;
+        }
+
+        return merged;
+    }
+
     private updateStatusBar(context: StackContext): void {
-        // Build a concise stack identifier
-        const parts: string[] = [];
+        // Calculate stack identifier using pattern from atmos.yaml
+        const vars: Record<string, any> = {};
         
         if (context.namespace) {
-            parts.push(context.namespace);
+            vars.namespace = context.namespace;
         }
         if (context.tenant) {
-            parts.push(context.tenant);
+            vars.tenant = context.tenant;
         }
         if (context.environment) {
-            parts.push(context.environment);
+            vars.environment = context.environment;
         }
         if (context.stage) {
-            parts.push(context.stage);
+            vars.stage = context.stage;
         }
         
-        const stackIdentifier = parts.length > 0 
-            ? parts.join('-')
-            : context.stackName;
+        // Try to calculate stack name from pattern
+        const calculatedName = this.configManager.calculateStackName(vars);
+        
+        // Use calculated name if available, otherwise fall back to manual joining
+        const stackIdentifier = calculatedName || this.buildFallbackStackName(context);
 
         this.statusBarItem.text = `$(layers) ${stackIdentifier}`;
         
@@ -152,6 +230,13 @@ export class StackContextProvider {
         const tooltipLines: string[] = [
             `**Stack:** ${context.stackName}`,
         ];
+        
+        // Show pattern if available
+        const pattern = this.configManager.getStackNamePattern();
+        if (pattern && calculatedName) {
+            tooltipLines.push(`**Calculated Name:** ${calculatedName}`);
+            tooltipLines.push(`**Pattern:** \`${pattern}\``);
+        }
         
         if (context.namespace) {
             tooltipLines.push(`**Namespace:** ${context.namespace}`);
@@ -169,6 +254,28 @@ export class StackContextProvider {
         tooltipLines.push('', '_Click for more options_');
         
         this.statusBarItem.tooltip = new vscode.MarkdownString(tooltipLines.join('\n'));
+    }
+
+    /**
+     * Fallback method to build stack name when pattern is not available
+     */
+    private buildFallbackStackName(context: StackContext): string {
+        const parts: string[] = [];
+        
+        if (context.namespace) {
+            parts.push(context.namespace);
+        }
+        if (context.tenant) {
+            parts.push(context.tenant);
+        }
+        if (context.environment) {
+            parts.push(context.environment);
+        }
+        if (context.stage) {
+            parts.push(context.stage);
+        }
+        
+        return parts.length > 0 ? parts.join('-') : context.stackName;
     }
 
     public getCurrentContext(): StackContext | null {

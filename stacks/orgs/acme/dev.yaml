@@ -1,10 +1,7 @@
-imports:
+import:
   - orgs/acme/_defaults
-  - catalog/vpc
-  - catalog/eks
 
 vars:
-  environment: dev
   stage: dev
 
 components:

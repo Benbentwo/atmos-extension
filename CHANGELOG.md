@@ -50,6 +50,15 @@ All notable changes to the Atmos VS Code extension.
 
 ## [Unreleased]
 
+### Added
+- **Schema Validation**: Comprehensive validation of Atmos YAML structure
+  - Validates top-level keys against Atmos schema
+  - Detects common typos with helpful suggestions (e.g., `imports` → `import`)
+  - Red squiggles for invalid keys with actionable error messages
+  - Supports validation for: `import`, `vars`, `settings`, `env`, `backend`, `components`, etc.
+- **Enhanced Error Messages**: Context-aware suggestions for common mistakes
+- **Backward Compatibility**: Parser supports both `import` and `imports` for legacy files
+
 ### Planned for 0.2.0
 - Enhanced syntax highlighting with Atmos-specific grammar
 - Stack tree view in sidebar

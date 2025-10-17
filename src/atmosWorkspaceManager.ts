@@ -31,9 +31,15 @@ export class AtmosWorkspaceManager {
         
         console.log(`Found ${configFiles.length} atmos.yaml file(s)`);
 
+        // Deduplicate config files (in case symlinks point to same file)
+        const uniqueConfigFiles = Array.from(new Set(configFiles));
+        if (uniqueConfigFiles.length < configFiles.length) {
+            console.log(`Deduplicated to ${uniqueConfigFiles.length} unique atmos.yaml file(s)`);
+        }
+
         const workspaces: AtmosWorkspace[] = [];
 
-        for (const configPath of configFiles) {
+        for (const configPath of uniqueConfigFiles) {
             const workspace = await this.createWorkspace(configPath);
             if (workspace) {
                 this.workspaces.set(workspace.id, workspace);
@@ -78,7 +84,18 @@ export class AtmosWorkspaceManager {
                 } else if (entry.isFile()) {
                     // Check if this is an atmos config file
                     if (entry.name === 'atmos.yaml' || entry.name === 'atmos.yml') {
-                        configs.push(fullPath);
+                        // Resolve symlinks to get the real path
+                        try {
+                            const realPath = await fs.promises.realpath(fullPath);
+                            const stats = await fs.promises.lstat(fullPath);
+                            if (stats.isSymbolicLink()) {
+                                console.log(`Found symlinked atmos.yaml at ${fullPath}, resolving to ${realPath}`);
+                            }
+                            configs.push(realPath);
+                        } catch (error) {
+                            console.error(`Error resolving path ${fullPath}:`, error);
+                            continue;
+                        }
                     }
                 }
             }

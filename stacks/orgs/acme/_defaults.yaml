@@ -1,10 +1,20 @@
 # Defaults for ACME organization
-imports:
+import:
   - catalog/_defaults
+  - catalog/vpc
+  - catalog/eks
 
+imports: # Wrong intentionally - to show error validation in LSP
+ - catalog/vpc
+ - catalog/eks
+
+foo:
+  bar: baz
+  
 vars:
   tenant: acme
   namespace: acme
+  environment: use1
   region: us-east-1
   
   tags:

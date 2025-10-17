@@ -2,12 +2,14 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { AtmosConfigManager } from './atmosConfig';
 import { StackParser, StackConfig, StackComponent } from './stackParser';
+import { AtmosCli, AtmosStack } from './atmosCli';
 
 /**
  * Tree item types for the stack viewer
  */
 enum StackViewItemType {
     Stack = 'stack',
+    StackFile = 'stackfile',
     Component = 'component',
     Section = 'section',
     Property = 'property',
@@ -28,7 +30,8 @@ class StackViewItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly value?: any,
         public readonly filePath?: string,
-        public readonly componentName?: string
+        public readonly componentName?: string,
+        public readonly stackName?: string
     ) {
         super(label, collapsibleState);
         
@@ -39,6 +42,9 @@ class StackViewItem extends vscode.TreeItem {
         switch (type) {
             case StackViewItemType.Stack:
                 this.iconPath = new vscode.ThemeIcon('layers');
+                break;
+            case StackViewItemType.StackFile:
+                this.iconPath = new vscode.ThemeIcon('file');
                 break;
             case StackViewItemType.Component:
                 this.iconPath = new vscode.ThemeIcon('package');
@@ -79,6 +85,15 @@ class StackViewItem extends vscode.TreeItem {
                 command: 'atmos.stackViewer.openComponent',
                 title: 'Open Component',
                 arguments: [filePath, componentName]
+            };
+        }
+        
+        // Make stack files clickable
+        if (type === StackViewItemType.StackFile && filePath) {
+            this.command = {
+                command: 'atmos.stackViewer.openFile',
+                title: 'Open File',
+                arguments: [filePath]
             };
         }
         
@@ -124,14 +139,18 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
     
     private configManager: AtmosConfigManager;
     private stackParser: StackParser;
-    private currentStackFile: string | undefined;
-    private mergedConfig: StackConfig | undefined;
+    private atmosCli: AtmosCli;
+    private stacks: AtmosStack[] = [];
     private isLoading = false;
     private error: string | undefined;
     
     constructor(configManager: AtmosConfigManager) {
         this.configManager = configManager;
         this.stackParser = new StackParser(configManager.getStacksPath());
+        this.atmosCli = new AtmosCli(configManager.getWorkspaceRoot());
+        
+        // Load stacks on initialization
+        this.loadStacks();
     }
     
     /**
@@ -142,30 +161,30 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
     }
     
     /**
-     * Update the viewer with a new stack file
+     * Load all stacks from atmos list stacks
      */
-    public async updateStackFile(filePath: string | undefined): Promise<void> {
-        this.currentStackFile = filePath;
+    private async loadStacks(): Promise<void> {
+        this.isLoading = true;
         this.error = undefined;
-        
-        if (filePath && this.configManager.isStackFile(filePath)) {
-            this.isLoading = true;
-            this.refresh();
-            
-            try {
-                this.mergedConfig = await this.deepMergeStack(filePath);
-                this.error = undefined;
-            } catch (err) {
-                this.error = err instanceof Error ? err.message : String(err);
-                this.mergedConfig = undefined;
-            } finally {
-                this.isLoading = false;
-            }
-        } else {
-            this.mergedConfig = undefined;
-        }
-        
         this.refresh();
+        
+        try {
+            this.stacks = await this.atmosCli.listStacks();
+            this.error = undefined;
+        } catch (err) {
+            this.error = err instanceof Error ? err.message : String(err);
+            this.stacks = [];
+        } finally {
+            this.isLoading = false;
+            this.refresh();
+        }
+    }
+    
+    /**
+     * Reload stacks
+     */
+    public async reloadStacks(): Promise<void> {
+        await this.loadStacks();
     }
     
     /**
@@ -189,13 +208,13 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
     }
     
     /**
-     * Get root level children
+     * Get root level children - show all stacks
      */
     private getRootChildren(): StackViewItem[] {
         if (this.isLoading) {
             return [
                 new StackViewItem(
-                    'Loading stack configuration...',
+                    'Loading stacks...',
                     StackViewItemType.Loading,
                     vscode.TreeItemCollapsibleState.None
                 )
@@ -212,46 +231,40 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
             ];
         }
         
-        if (!this.currentStackFile || !this.mergedConfig) {
+        if (this.stacks.length === 0) {
             return [
                 new StackViewItem(
-                    'No stack file open',
+                    'No stacks found',
                     StackViewItemType.NoStack,
                     vscode.TreeItemCollapsibleState.None
                 )
             ];
         }
         
-        const items: StackViewItem[] = [];
-        
-        // Add stack info
-        const stackName = this.getStackName(this.currentStackFile);
-        items.push(
+        // Create a tree item for each stack
+        return this.stacks.map(stack => 
             new StackViewItem(
-                stackName,
+                stack.stack,
                 StackViewItemType.Stack,
-                vscode.TreeItemCollapsibleState.Expanded,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                stack,
                 undefined,
-                this.currentStackFile
+                undefined,
+                stack.stack
             )
         );
-        
-        return items;
     }
     
     /**
      * Get children for a specific item
      */
     private async getItemChildren(element: StackViewItem): Promise<StackViewItem[]> {
-        if (!this.mergedConfig) {
-            return [];
-        }
-        
-        const items: StackViewItem[] = [];
-        
         switch (element.type) {
             case StackViewItemType.Stack:
-                return this.getStackChildren();
+                return this.getStackChildren(element);
+                
+            case StackViewItemType.StackFile:
+                return this.getStackFileChildren(element);
                 
             case StackViewItemType.Section:
                 return this.getSectionChildren(element);
@@ -274,135 +287,98 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
     }
     
     /**
-     * Get children for the stack node
+     * Get children for the stack node - show stack files
      */
-    private async getStackChildren(): Promise<StackViewItem[]> {
-        if (!this.mergedConfig || !this.currentStackFile) {
+    private async getStackChildren(element: StackViewItem): Promise<StackViewItem[]> {
+        if (!element.stackName) {
             return [];
         }
         
-        const items: StackViewItem[] = [];
-        const parsed = await this.stackParser.parseStackFile(this.currentStackFile);
+        try {
+            // Get stack files that contribute to this stack
+            const stackFiles = await this.atmosCli.getStackFiles(element.stackName);
+            
+            if (stackFiles.length === 0) {
+                return [
+                    new StackViewItem(
+                        'No stack files found',
+                        StackViewItemType.NoStack,
+                        vscode.TreeItemCollapsibleState.None
+                    )
+                ];
+            }
+            
+            // Create items for each stack file
+            const stacksPath = this.configManager.getStacksPath();
+            return stackFiles.map(({ file, components }) => {
+                const fullPath = path.join(stacksPath, file.endsWith('.yaml') ? file : `${file}.yaml`);
+                const label = `${file} [${components.length} component${components.length !== 1 ? 's' : ''}]`;
+                
+                return new StackViewItem(
+                    label,
+                    StackViewItemType.StackFile,
+                    vscode.TreeItemCollapsibleState.Collapsed,
+                    components, // Store components in value
+                    fullPath,
+                    undefined,
+                    element.stackName
+                );
+            });
+        } catch (error) {
+            console.error('Failed to get stack files:', error);
+            return [
+                new StackViewItem(
+                    'Error loading stack files',
+                    StackViewItemType.Error,
+                    vscode.TreeItemCollapsibleState.None
+                )
+            ];
+        }
+    }
+    
+    /**
+     * Get children for a stack file node - show components
+     */
+    private async getStackFileChildren(element: StackViewItem): Promise<StackViewItem[]> {
+        if (!element.filePath || !element.stackName) {
+            return [];
+        }
         
-        // Add file info at the top
-        const relativePath = path.relative(this.configManager.getStacksPath(), this.currentStackFile);
-        items.push(
-            new StackViewItem(
-                `file: ${relativePath}`,
-                StackViewItemType.Property,
+        // Get components from the stored value (array of component names)
+        const components = element.value as string[];
+        
+        if (!components || components.length === 0) {
+            return [
+                new StackViewItem(
+                    'No components in this file',
+                    StackViewItemType.NoStack,
+                    vscode.TreeItemCollapsibleState.None
+                )
+            ];
+        }
+        
+        // Create items for each component
+        return components.map(componentName => {
+            // Use the stack file path instead of component path
+            // so we can navigate to where the component is defined in the stack file
+            return new StackViewItem(
+                componentName,
+                StackViewItemType.Component,
                 vscode.TreeItemCollapsibleState.None,
-                relativePath,
-                this.currentStackFile
-            )
-        );
-        
-        // Add imports section if present
-        if (parsed.imports.length > 0) {
-            const importsItem = new StackViewItem(
-                `imports: [${parsed.imports.length}]`,
-                StackViewItemType.Section,
-                vscode.TreeItemCollapsibleState.Collapsed,
-                parsed.imports
+                undefined,
+                element.filePath, // Use the stack file path
+                componentName,
+                element.stackName
             );
-            items.push(importsItem);
-        }
-        
-        // Add separator
-        items.push(
-            new StackViewItem(
-                '---',
-                StackViewItemType.Section,
-                vscode.TreeItemCollapsibleState.None
-            )
-        );
-        
-        // Add components section
-        const components = this.mergedConfig.components?.terraform || this.mergedConfig.terraform || {};
-        const componentCount = Object.keys(components).length;
-        
-        if (componentCount > 0) {
-            const componentsItem = new StackViewItem(
-                `components: [${componentCount}]`,
-                StackViewItemType.Section,
-                vscode.TreeItemCollapsibleState.Expanded,
-                components
-            );
-            items.push(componentsItem);
-        }
-        
-        // Add global vars section if present
-        if (this.mergedConfig.vars && Object.keys(this.mergedConfig.vars).length > 0) {
-            items.push(
-                new StackViewItem(
-                    'vars:',
-                    StackViewItemType.Section,
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    this.mergedConfig.vars
-                )
-            );
-        }
-        
-        // Add global settings section if present
-        if (this.mergedConfig.settings && Object.keys(this.mergedConfig.settings).length > 0) {
-            items.push(
-                new StackViewItem(
-                    'settings:',
-                    StackViewItemType.Section,
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    this.mergedConfig.settings
-                )
-            );
-        }
-        
-        return items;
+        });
     }
     
     /**
      * Get children for a section node
      */
     private getSectionChildren(element: StackViewItem): StackViewItem[] {
-        const items: StackViewItem[] = [];
-        
-        if (element.label.startsWith('imports:')) {
-            // Show import files in YAML list format
-            const imports = element.value as string[];
-            for (const importPath of imports) {
-                const resolvedPath = this.stackParser.resolveImportPath(
-                    this.currentStackFile!,
-                    importPath
-                );
-                items.push(
-                    new StackViewItem(
-                        `- ${importPath}`,
-                        StackViewItemType.Import,
-                        vscode.TreeItemCollapsibleState.None,
-                        undefined,
-                        resolvedPath
-                    )
-                );
-            }
-        } else if (element.label.startsWith('components:')) {
-            // Show components in YAML format
-            const components = element.value as Record<string, StackComponent>;
-            for (const [name, component] of Object.entries(components)) {
-                const componentPath = this.getComponentPath(component.component || name);
-                items.push(
-                    new StackViewItem(
-                        `${name}:`,
-                        StackViewItemType.Component,
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        component,
-                        componentPath,
-                        name
-                    )
-                );
-            }
-        } else {
-            // Show properties
-            return this.getObjectChildren(element.value);
-        }
-        
-        return items;
+        // Show properties
+        return this.getObjectChildren(element.value);
     }
     
     /**
@@ -548,131 +524,6 @@ export class StackViewerProvider implements vscode.TreeDataProvider<StackViewIte
                 item
             );
         });
-    }
-    
-    /**
-     * Deep merge stack configuration
-     */
-    private async deepMergeStack(stackFilePath: string): Promise<StackConfig> {
-        const visited = new Set<string>();
-        return await this.mergeStackRecursive(stackFilePath, visited);
-    }
-    
-    /**
-     * Recursively merge stack configurations
-     */
-    private async mergeStackRecursive(
-        stackFilePath: string,
-        visited: Set<string>
-    ): Promise<StackConfig> {
-        if (visited.has(stackFilePath)) {
-            return {};
-        }
-        visited.add(stackFilePath);
-        
-        const parsed = await this.stackParser.parseStackFile(stackFilePath);
-        
-        if (parsed.errors.length > 0) {
-            console.warn(`Errors parsing ${stackFilePath}:`, parsed.errors);
-        }
-        
-        let mergedConfig: StackConfig = {};
-        
-        // Process imports first
-        for (const importPath of parsed.imports) {
-            const resolvedPath = this.stackParser.resolveImportPath(
-                stackFilePath,
-                importPath
-            );
-            
-            const importedConfig = await this.mergeStackRecursive(
-                resolvedPath,
-                visited
-            );
-            
-            mergedConfig = this.mergeConfigs(mergedConfig, importedConfig);
-        }
-        
-        // Merge current file's config
-        mergedConfig = this.mergeConfigs(mergedConfig, parsed.config);
-        
-        return mergedConfig;
-    }
-    
-    /**
-     * Merge two stack configurations
-     */
-    private mergeConfigs(base: StackConfig, override: StackConfig): StackConfig {
-        const merged: StackConfig = { ...base };
-        
-        if (override.vars) {
-            merged.vars = { ...(merged.vars || {}), ...override.vars };
-        }
-        
-        if (override.settings) {
-            merged.settings = { ...(merged.settings || {}), ...override.settings };
-        }
-        
-        if (override.components?.terraform) {
-            if (!merged.components) {
-                merged.components = {};
-            }
-            if (!merged.components.terraform) {
-                merged.components.terraform = {};
-            }
-            
-            for (const [name, component] of Object.entries(override.components.terraform)) {
-                const baseComponent = merged.components.terraform[name] || {};
-                merged.components.terraform[name] = this.mergeComponentConfigs(
-                    baseComponent,
-                    component
-                );
-            }
-        }
-        
-        if (override.terraform) {
-            if (!merged.terraform) {
-                merged.terraform = {};
-            }
-            
-            for (const [name, component] of Object.entries(override.terraform)) {
-                const baseComponent = merged.terraform[name] || {};
-                merged.terraform[name] = this.mergeComponentConfigs(
-                    baseComponent,
-                    component as StackComponent
-                );
-            }
-        }
-        
-        return merged;
-    }
-    
-    /**
-     * Merge component configurations
-     */
-    private mergeComponentConfigs(
-        base: StackComponent,
-        override: StackComponent
-    ): StackComponent {
-        return {
-            component: override.component || base.component,
-            vars: { ...(base.vars || {}), ...(override.vars || {}) },
-            settings: { ...(base.settings || {}), ...(override.settings || {}) },
-            backend: override.backend || base.backend,
-            backend_type: override.backend_type || base.backend_type,
-            remote_state_backend: override.remote_state_backend || base.remote_state_backend,
-            remote_state_backend_type: override.remote_state_backend_type || base.remote_state_backend_type,
-            metadata: { ...(base.metadata || {}), ...(override.metadata || {}) }
-        };
-    }
-    
-    /**
-     * Get stack name from file path
-     */
-    private getStackName(filePath: string): string {
-        const stacksPath = this.configManager.getStacksPath();
-        const relativePath = path.relative(stacksPath, filePath);
-        return relativePath.replace(/\.ya?ml$/, '');
     }
     
     /**

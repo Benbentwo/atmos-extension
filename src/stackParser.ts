@@ -14,7 +14,8 @@ export interface StackComponent {
 }
 
 export interface StackConfig {
-    imports?: string[];
+    import?: string[];
+    imports?: string[]; // Legacy/incorrect - kept for backward compatibility
     vars?: Record<string, any>;
     settings?: Record<string, any>;
     backend?: Record<string, any>;
@@ -51,8 +52,11 @@ export class StackParser {
             const content = await fs.promises.readFile(filePath, 'utf-8');
             const config = yaml.parse(content) as StackConfig;
 
-            // Extract imports
-            if (config.imports && Array.isArray(config.imports)) {
+            // Extract imports (prefer 'import' over 'imports')
+            if (config.import && Array.isArray(config.import)) {
+                imports.push(...config.import);
+            } else if (config.imports && Array.isArray(config.imports)) {
+                // Legacy support for 'imports' (incorrect)
                 imports.push(...config.imports);
             }
 
@@ -144,7 +148,8 @@ export class StackParser {
         for (const line of lines) {
             const lineEnd = currentPos + line.length + 1;
             
-            if (line.trim().startsWith('imports:')) {
+            // Only check for valid 'import:' - not 'imports:' (invalid)
+            if (line.trim().startsWith('import:')) {
                 inImports = true;
             } else if (inImports && line.match(/^[a-zA-Z]/)) {
                 inImports = false;

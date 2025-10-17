@@ -23,11 +23,12 @@ export class AtmosCompletionProvider implements vscode.CompletionItemProvider {
             return this.getComponentCompletions();
         }
 
-        // Import completion
+        // Import completion - only for valid 'import:' key
         if (linePrefix.match(/^\s*-\s*["']?[a-zA-Z0-9_/-]*$/)) {
             const fullText = document.getText();
             const beforeCursor = fullText.substring(0, document.offsetAt(position));
-            if (beforeCursor.includes('imports:')) {
+            // Only check for valid 'import:' - not 'imports:' (invalid)
+            if (beforeCursor.includes('import:')) {
                 return this.getStackImportCompletions();
             }
         }

@@ -55,7 +55,7 @@ CURRENT_DIR="$(pwd)"
 
 echo ""
 gum style --foreground 86 "Choose installation target:"
-choice=$(gum choose "VS Code" "Windsurf" "Both")
+# choice=$(gum choose "VS Code" "Windsurf" "Both")
 
 install_extension() {
     local target_dir=$1
@@ -80,22 +80,26 @@ install_extension() {
     gum style --foreground 245 "   → $ext_path"
 }
 
-case $choice in
-    "VS Code")
-        install_extension "$VSCODE_EXT_DIR" "VS Code"
-        ;;
-    "Windsurf")
-        install_extension "$WINDSURF_EXT_DIR" "Windsurf"
-        ;;
-    "Both")
-        install_extension "$VSCODE_EXT_DIR" "VS Code"
-        install_extension "$WINDSURF_EXT_DIR" "Windsurf"
-        ;;
-    *)
-        gum style --foreground 196 "❌ Invalid choice"
-        exit 1
-        ;;
-esac
+# case $choice in
+#     "VS Code")
+#         install_extension "$VSCODE_EXT_DIR" "VS Code"
+#         ;;
+#     "Windsurf")
+#         install_extension "$WINDSURF_EXT_DIR" "Windsurf"
+#         ;;
+#     "Both")
+#         install_extension "$VSCODE_EXT_DIR" "VS Code"
+#         install_extension "$WINDSURF_EXT_DIR" "Windsurf"
+#         ;;
+#     *)
+#         gum style --foreground 196 "❌ Invalid choice"
+#         exit 1
+#         ;;
+# esac
+
+echo "Cleaning $WINDSURF_EXT_DIR/$EXT_NAME"
+rm -rf "$WINDSURF_EXT_DIR/$EXT_NAME"
+install_extension "$WINDSURF_EXT_DIR" "Windsurf"
 
 echo ""
 gum style \

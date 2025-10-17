@@ -1,11 +1,8 @@
-imports:
+import:
   - orgs/acme/_defaults
-  - catalog/vpc
-  - catalog/eks
   - catalog/rds
 
 vars:
-  environment: prod
   stage: prod
 
 components:

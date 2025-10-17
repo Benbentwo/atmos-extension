@@ -76,6 +76,24 @@
       {
         "command": "atmos.stackViewer.openFile",
         "title": "Open File"
+      },
+      {
+        "command": "atmos.explorer.openComponent",
+        "title": "Open Component"
+      },
+      {
+        "command": "atmos.componentsView.openComponent",
+        "title": "Open Component"
+      },
+      {
+        "command": "atmos.componentsView.refresh",
+        "title": "Refresh Components View",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "atmos.componentsView.search",
+        "title": "Search Components",
+        "icon": "$(search)"
       }
     ],
     "viewsContainers": {
@@ -93,6 +111,12 @@
           "id": "atmosStackViewer",
           "name": "Stack Viewer",
           "contextualTitle": "Atmos Stack Viewer"
+        },
+        {
+          "id": "atmosComponents",
+          "name": "Components",
+          "contextualTitle": "Atmos Components",
+          "when": "resourceLangId == yaml"
         }
       ]
     },
@@ -102,9 +126,31 @@
           "command": "atmos.stackViewer.refresh",
           "when": "view == atmosStackViewer",
           "group": "navigation"
+        },
+        {
+          "command": "atmos.componentsView.refresh",
+          "when": "view == atmosComponents",
+          "group": "navigation@1"
+        },
+        {
+          "command": "atmos.componentsView.search",
+          "when": "view == atmosComponents",
+          "group": "navigation@2"
         }
       ]
     },
+    "customEditors": [
+      {
+        "viewType": "atmos.stackEditor",
+        "displayName": "Atmos Stack Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/stacks/**/*.{yaml,yml}"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
     "configuration": {
       "title": "Atmos",
       "properties": {
@@ -122,6 +168,41 @@
           "type": "boolean",
           "default": true,
           "description": "Validate stack files on save"
+        },
+        "atmos.explorer.showDecorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show stack names in Explorer file decorations"
+        },
+        "atmos.explorer.showComponents": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show component tree in Explorer for stack files"
+        },
+        "atmos.editor.useCustomEditor": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use custom editor for stack files (set to 'option' priority)"
+        },
+        "atmos.editor.showPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show preview pane in custom editor"
+        },
+        "atmos.language.evaluateTemplates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Evaluate and show template values"
+        },
+        "atmos.language.showInlineHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline hints for resolved values"
+        },
+        "atmos.components.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-refresh components view when files change"
         }
       }
     },

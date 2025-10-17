@@ -9,8 +9,15 @@ export interface AtmosConfig {
     componentsPath: string;
     workflowsPath?: string;
     schemas?: {
-        atmos?: string;
-        jsonschema?: string;
+        atmos?: {
+            manifest?: string;
+        };
+        jsonschema?: {
+            base_path?: string;
+        };
+        opa?: {
+            base_path?: string;
+        };
     };
     stacks?: {
         name_pattern?: string;
@@ -59,6 +66,10 @@ export class AtmosConfigManager {
         return this.config;
     }
 
+    public getWorkspaceRoot(): string {
+        return this.workspaceRoot;
+    }
+
     public getStacksPath(): string {
         if (!this.config) {
             return path.join(this.workspaceRoot, 'stacks');
@@ -78,6 +89,67 @@ export class AtmosConfigManager {
         return filePath.startsWith(stacksPath) && filePath.endsWith('.yaml');
     }
 
+    public getManifestSchemaPath(): string {
+        const defaultSchema = 'https://atmos.tools/schemas/atmos/atmos-manifest/1.0/atmos-manifest.json';
+        
+        if (!this.config?.schemas?.atmos?.manifest) {
+            return defaultSchema;
+        }
+
+        const manifestPath = this.config.schemas.atmos.manifest;
+        
+        // If it's a URL, return as-is
+        if (manifestPath.startsWith('http://') || manifestPath.startsWith('https://')) {
+            return manifestPath;
+        }
+
+        // If it's a relative path, resolve it relative to workspace root
+        return path.join(this.workspaceRoot, this.config.basePath, manifestPath);
+    }
+
+    /**
+     * Get the stack name pattern from atmos.yaml
+     * Supports both name_pattern and name_template formats
+     */
+    public getStackNamePattern(): string | null {
+        if (!this.config?.stacks) {
+            return null;
+        }
+        
+        // Prefer name_pattern over name_template
+        return this.config.stacks.name_pattern || this.config.stacks.name_template || null;
+    }
+
+    /**
+     * Calculate stack name from pattern using provided variables
+     * Supports both {var} and {{.var}} template formats
+     */
+    public calculateStackName(vars: Record<string, any>): string | null {
+        const pattern = this.getStackNamePattern();
+        if (!pattern) {
+            return null;
+        }
+
+        let result = pattern;
+        
+        // Replace {var} format
+        result = result.replace(/\{(\w+)\}/g, (match, varName) => {
+            return vars[varName] !== undefined ? String(vars[varName]) : match;
+        });
+        
+        // Replace {{.var}} format (Go template style)
+        result = result.replace(/\{\{\.(\w+)\}\}/g, (match, varName) => {
+            return vars[varName] !== undefined ? String(vars[varName]) : match;
+        });
+        
+        // If no replacements were made, return null
+        if (result === pattern || result.includes('{') || result.includes('{{')) {
+            return null;
+        }
+        
+        return result;
+    }
+
     private findAtmosConfig(): string | null {
         const possiblePaths = [
             path.join(this.workspaceRoot, 'atmos.yaml'),
@@ -88,7 +160,18 @@ export class AtmosConfigManager {
 
         for (const configPath of possiblePaths) {
             if (fs.existsSync(configPath)) {
-                return configPath;
+                // Resolve symlinks to get the real path
+                try {
+                    const realPath = fs.realpathSync(configPath);
+                    const stats = fs.lstatSync(configPath);
+                    if (stats.isSymbolicLink()) {
+                        console.log(`Found symlinked atmos.yaml at ${configPath}, resolving to ${realPath}`);
+                    }
+                    return realPath;
+                } catch (error) {
+                    console.error(`Error resolving path ${configPath}:`, error);
+                    continue;
+                }
             }
         }
 
